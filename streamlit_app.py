@@ -7,24 +7,20 @@ import plotly.graph_objects as go
 from shapely.geometry import mapping, box
 from folium.features import GeoJsonTooltip, GeoJsonPopup
 import ast
-from dotenv import load_dotenv
 import os
 import requests  # Import requests for HTTP requests
 
 # Import OpenAI client
 from openai import OpenAI
 
-# Load environment variables from the .env file
-load_dotenv()
-
-# Create the OpenAI client
+# Set your OpenAI API key
 client = OpenAI(
-    api_key=os.environ.get("OPENAI_API_KEY"),  # This is the default and can be omitted
+    api_key="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",  # Replace with your actual API key
 )
 
 # Check if the API key was successfully loaded
-if client.api_key is None:
-    st.error("OpenAI API key not found. Please set it in your .env file.")
+if client.api_key is None or client.api_key == "":
+    st.error("OpenAI API key not found. Please set it in your code.")
 
 # Set Streamlit page configuration
 st.set_page_config(layout="wide")
