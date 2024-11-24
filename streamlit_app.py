@@ -15,7 +15,7 @@ from openai import OpenAI
 
 # Set your OpenAI API key
 client = OpenAI(
-    api_key="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",  # Replace with your actual API key
+    api_key="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",  # Replace with your actual API key
 )
 
 # Check if the API key was successfully loaded
