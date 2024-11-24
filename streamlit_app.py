@@ -21,8 +21,19 @@ openai_api_key = st.sidebar.text_input("Enter your OpenAI API key:", type="passw
 # Check if the API key was provided
 if openai_api_key:
     openai.api_key = openai_api_key
+    # Create a client object that mimics the desired structure
+    class Chat:
+        class Completions:
+            @staticmethod
+            def create(**kwargs):
+                return openai.ChatCompletion.create(**kwargs)
+        completions = Completions()
+    class Client:
+        chat = Chat()
+    client = Client()
 else:
     st.sidebar.warning("Please enter your OpenAI API key to generate analysis descriptions.")
+    client = None  # Ensure client is None if API key is not provided
 
 # Load review data
 @st.cache_data
@@ -421,10 +432,10 @@ with col2:
                 # Generate the analysis description using OpenAI API
                 prompt = f"Give a brief overview of insights on opening a restaurant in this location where the top 3 topics are {', '.join(top_3_topics)}. Please limit to a few sentences."
 
-                if openai_api_key:
+                if client:
                     try:
                         with st.spinner("Generating analysis description..."):
-                            chat_completion = openai.ChatCompletion.create(
+                            chat_completion = client.chat.completions.create(
                                 messages=[
                                     {
                                         "role": "user",
@@ -450,10 +461,10 @@ with col2:
                     # Construct prompt based on avg_rating
                     prompt = f"Even though there are no written reviews for this location, the average rating is {avg_rating:.2f}. Based on this average rating, provide insights on opening a restaurant in this location. Explain whether it's an average, good, or bad place to open a new restaurant."
 
-                    if openai_api_key:
+                    if client:
                         try:
                             with st.spinner("Generating analysis description..."):
-                                chat_completion = openai.ChatCompletion.create(
+                                chat_completion = client.chat.completions.create(
                                     messages=[
                                         {
                                             "role": "user",
