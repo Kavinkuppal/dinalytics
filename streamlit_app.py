@@ -9,21 +9,20 @@ from folium.features import GeoJsonTooltip, GeoJsonPopup
 import ast
 import os
 import requests  # Import requests for HTTP requests
-
-# Import OpenAI client
-from openai import OpenAI
-
-# Set your OpenAI API key
-client = OpenAI(
-    api_key="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",  # Replace with your actual API key
-)
-
-# Check if the API key was successfully loaded
-if client.api_key is None or client.api_key == "":
-    st.error("OpenAI API key not found. Please set it in your code.")
+import openai  # Import OpenAI library
 
 # Set Streamlit page configuration
 st.set_page_config(layout="wide")
+
+# Text input for OpenAI API key
+st.sidebar.title("OpenAI API Key")
+openai_api_key = st.sidebar.text_input("Enter your OpenAI API key:", type="password")
+
+# Check if the API key was provided
+if openai_api_key:
+    openai.api_key = openai_api_key
+else:
+    st.sidebar.warning("Please enter your OpenAI API key to generate analysis descriptions.")
 
 # Load review data
 @st.cache_data
@@ -62,7 +61,7 @@ with col1:
 
     # Load the data from the CSV file
     with st.spinner("Loading map data..."):
-        data = pd.read_csv("https://drive.google.com/uc?export=download&id=1hdco3Lnkt7Fz8PlI33A153T9Mt77nUSY")
+        data = pd.read_csv("https://www.dropbox.com/scl/fi/3a48oyk9ntt6yumzpd3bf/yelp_business_data.csv?rlkey=ksemy3n0bie3fuad1xfnmbzff&st=wona6o93&dl=1")
 
     # Filter for only Pennsylvania (state 'PA') entries
     data_pa = data[data['state'] == 'PA']
@@ -420,38 +419,12 @@ with col2:
                 top_3_topics = [label for label, score in sorted_labels[:3]]
 
                 # Generate the analysis description using OpenAI API
-
                 prompt = f"Give a brief overview of insights on opening a restaurant in this location where the top 3 topics are {', '.join(top_3_topics)}. Please limit to a few sentences."
 
-                try:
-                    with st.spinner("Generating analysis description..."):
-                        chat_completion = client.chat.completions.create(
-                            messages=[
-                                {
-                                    "role": "user",
-                                    "content": prompt,
-                                }
-                            ],
-                            model="gpt-4",  # Replace with the model you have access to
-                        )
-
-                        analysis_description = chat_completion.choices[0].message.content.strip()
-
-                    st.write(analysis_description)
-                except Exception as e:
-                    st.error(f"An error occurred while generating the analysis description: {e}")
-            else:
-                # Get the average rating from grid_df_sorted
-                box_row_in_grid = grid_df_sorted[grid_df_sorted['box_number'] == box_number]
-                if not box_row_in_grid.empty:
-                    avg_rating = box_row_in_grid['average_rating'].values[0]
-
-                    # Construct prompt based on avg_rating
-                    prompt = f"Even though there are no written reviews for this location, the average rating is {avg_rating:.2f}. Based on this average rating, provide insights on opening a restaurant in this location. Explain whether it's an average, good, or bad place to open a new restaurant."
-
+                if openai_api_key:
                     try:
                         with st.spinner("Generating analysis description..."):
-                            chat_completion = client.chat.completions.create(
+                            chat_completion = openai.ChatCompletion.create(
                                 messages=[
                                     {
                                         "role": "user",
@@ -466,6 +439,37 @@ with col2:
                         st.write(analysis_description)
                     except Exception as e:
                         st.error(f"An error occurred while generating the analysis description: {e}")
+                else:
+                    st.warning("Please enter your OpenAI API key to generate the analysis description.")
+            else:
+                # Get the average rating from grid_df_sorted
+                box_row_in_grid = grid_df_sorted[grid_df_sorted['box_number'] == box_number]
+                if not box_row_in_grid.empty:
+                    avg_rating = box_row_in_grid['average_rating'].values[0]
+
+                    # Construct prompt based on avg_rating
+                    prompt = f"Even though there are no written reviews for this location, the average rating is {avg_rating:.2f}. Based on this average rating, provide insights on opening a restaurant in this location. Explain whether it's an average, good, or bad place to open a new restaurant."
+
+                    if openai_api_key:
+                        try:
+                            with st.spinner("Generating analysis description..."):
+                                chat_completion = openai.ChatCompletion.create(
+                                    messages=[
+                                        {
+                                            "role": "user",
+                                            "content": prompt,
+                                        }
+                                    ],
+                                    model="gpt-4",  # Replace with the model you have access to
+                                )
+
+                                analysis_description = chat_completion.choices[0].message.content.strip()
+
+                            st.write(analysis_description)
+                        except Exception as e:
+                            st.error(f"An error occurred while generating the analysis description: {e}")
+                    else:
+                        st.warning("Please enter your OpenAI API key to generate the analysis description.")
                 else:
                     st.write("Average rating data is not available for this location.")
         else:
