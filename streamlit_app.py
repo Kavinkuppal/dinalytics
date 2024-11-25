@@ -8,8 +8,8 @@ from shapely.geometry import mapping, box
 from folium.features import GeoJsonTooltip, GeoJsonPopup
 import ast
 import os
-import requests  # Import requests for HTTP requests
-import openai  # Import OpenAI library
+import requests
+import json
 
 # Set Streamlit page configuration
 st.set_page_config(layout="wide")
@@ -20,17 +20,36 @@ openai_api_key = st.sidebar.text_input("Enter your OpenAI API key:", type="passw
 
 # Check if the API key was provided
 if openai_api_key:
-    openai.api_key = openai_api_key
-    # Create a client object that mimics the desired structure
-    class Chat:
-        class Completions:
-            @staticmethod
-            def create(**kwargs):
-                return openai.ChatCompletion.create(**kwargs)
-        completions = Completions()
-    class Client:
-        chat = Chat()
-    client = Client()
+    # Create a custom OpenAI client class
+    class OpenAIClient:
+        def __init__(self, api_key):
+            self.api_key = api_key
+            self.chat = self.Chat(self.api_key)
+
+        class Chat:
+            def __init__(self, api_key):
+                self.api_key = api_key
+                self.completions = self.Completions(self.api_key)
+
+            class Completions:
+                def __init__(self, api_key):
+                    self.api_key = api_key
+
+                def create(self, **kwargs):
+                    # Make a direct API request to OpenAI
+                    headers = {
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {self.api_key}",
+                    }
+                    url = "https://api.openai.com/v1/chat/completions"
+                    response = requests.post(url, headers=headers, json=kwargs)
+                    if response.status_code == 200:
+                        return response.json()
+                    else:
+                        raise Exception(f"API call failed: {response.status_code}, {response.text}")
+
+    # Instantiate the client
+    client = OpenAIClient(api_key=openai_api_key)
 else:
     st.sidebar.warning("Please enter your OpenAI API key to generate analysis descriptions.")
     client = None  # Ensure client is None if API key is not provided
@@ -435,17 +454,20 @@ with col2:
                 if client:
                     try:
                         with st.spinner("Generating analysis description..."):
+                            # Prepare the messages for the chat completion API
+                            messages = [
+                                {"role": "user", "content": prompt}
+                            ]
+
+                            # Call the API using client.chat.completions.create
                             chat_completion = client.chat.completions.create(
-                                messages=[
-                                    {
-                                        "role": "user",
-                                        "content": prompt,
-                                    }
-                                ],
                                 model="gpt-4",  # Replace with the model you have access to
+                                messages=messages,
+                                max_tokens=150,
+                                temperature=0.7,
                             )
 
-                            analysis_description = chat_completion.choices[0].message.content.strip()
+                            analysis_description = chat_completion['choices'][0]['message']['content'].strip()
 
                         st.write(analysis_description)
                     except Exception as e:
@@ -464,17 +486,20 @@ with col2:
                     if client:
                         try:
                             with st.spinner("Generating analysis description..."):
+                                # Prepare the messages for the chat completion API
+                                messages = [
+                                    {"role": "user", "content": prompt}
+                                ]
+
+                                # Call the API using client.chat.completions.create
                                 chat_completion = client.chat.completions.create(
-                                    messages=[
-                                        {
-                                            "role": "user",
-                                            "content": prompt,
-                                        }
-                                    ],
                                     model="gpt-4",  # Replace with the model you have access to
+                                    messages=messages,
+                                    max_tokens=150,
+                                    temperature=0.7,
                                 )
 
-                                analysis_description = chat_completion.choices[0].message.content.strip()
+                                analysis_description = chat_completion['choices'][0]['message']['content'].strip()
 
                             st.write(analysis_description)
                         except Exception as e:
